@@ -1,0 +1,176 @@
+﻿@page "/NewOrder"
+@inject OrderConsumer _orderConsumer
+@inject IJSRuntime js
+@inject NavigationManager Navigation
+@if (isLoading)
+{
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+}
+else
+{
+    <div class="order-container">
+        <div class="col-12 row">
+            <div class="col-3">
+                <label>Order Name :</label>
+            </div>
+            <div class="col-3">
+                <input class="form-control" @bind-value="Order.OrderName" />
+            </div>
+            <div class="col-2">
+                <label>Order Amount :</label>
+            </div>
+            <div class="col-1">
+                <label class="form-control text-center">@Math.Round(Order.Amount,4)</label>
+            </div>
+
+            <div class="col-3">
+                <button class="btn-primary" style="float:right;" @onclick="PlaceOrder">Place Order <i class="fa-solid fa-plus"></i></button>
+            </div>
+        </div>
+        <br />
+        <div class="col-12 row">
+            <div class="col-6">
+                <table class="table text-center">
+                    <thead class="thead-dark">
+
+                        <tr>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in products)
+                        {
+                            <tr>
+                                <td>@p.Name</td>
+                                <td>@Math.Round(p.Price,4)</td>
+                                <td><button class="btn-primary" @onclick="()=>AddItem(p)"><i class="fa-solid fa-plus"></i></button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-6">
+                <table class="table text-center">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Count</th>
+                            <th>Price</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+
+                        @foreach (var i in Order.Items)
+                        {
+                            <tr>
+
+                                <td>@i.ItemName</td>
+                                <td>@i.Count</td>
+                                <td>@Math.Round((i.Count * i.Price),4)</td>
+                                @if (i.Count == 1)
+                                {
+                                    <td><button class="btn-outline-danger" @onclick="()=>RemoveItem(i)"><i class="fa-solid fa-trash"></i></button></td>
+                                }
+                                else
+                                {
+                                    <td><button class="btn-outline-secondary" @onclick="()=>RemoveItem(i)"><i class="fa-solid fa-minus"></i></button></td>
+                                }
+                            </tr>
+
+                        }
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+}
+@code {
+    bool isLoading = false;
+
+    OrderViewModel Order = new OrderViewModel()
+        {
+            Items = new List<OrderItemsViewModel>()
+        };
+    List<ProductsViewModel> products = new List<ProductsViewModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        var productRet = await _orderConsumer.GetAllProducts();
+        if (productRet.HasErrors)
+        {
+            await js.DisplayMessage("Error", productRet.Errors[0].Message, SweetAlertMessageType.error);
+            return;
+        }
+        products = productRet.Data;
+        isLoading = false;
+        StateHasChanged();
+    }
+    protected void AddItem(ProductsViewModel product)
+    {
+        if (Order.Items.Any(x => x.ProductId == product.Id))
+        {
+            Order.Items.FirstOrDefault(x => x.ProductId == product.Id).Count++;
+        }
+        else
+        {
+            Order.Items.Add(new OrderItemsViewModel()
+                {
+                    ItemName = product.Name,
+                    Price = product.Price,
+                    Count = 1,
+                    ProductId = product.Id
+                });
+        }
+        Order.Amount = Order.Items.Sum(item => item.Count * item.Price);
+        StateHasChanged();
+    }
+    protected void RemoveItem(OrderItemsViewModel item)
+    {
+        if (Order.Items.Any(x => x.ProductId == item.ProductId))
+        {
+            if (Order.Items.FirstOrDefault(x => x.ProductId == item.ProductId).Count > 1)
+                Order.Items.FirstOrDefault(x => x.ProductId == item.ProductId).Count--;
+            else
+                Order.Items.Remove(item);
+
+            Order.Amount = Order.Items.Sum(item => item.Count * item.Price);
+        }
+        StateHasChanged();
+    }
+    protected async Task PlaceOrder()
+    {
+        if (string.IsNullOrEmpty(Order.OrderName))
+        {
+            await js.DisplayMessage("Warning", "Must Enter Order Name", SweetAlertMessageType.warning);
+            return;
+        }
+        if (Order.Items.Count() <= 0)
+        {
+            await js.DisplayMessage("Warning", "Must Choose Items", SweetAlertMessageType.warning);
+            return;
+        }
+        Order.Amount = Math.Round(Order.Amount, 4);
+        var ordRet = await _orderConsumer.PlaceOrder(Order);
+        if (ordRet.HasErrors || !ordRet.Data)
+        {
+            await js.DisplayMessage("Error", ordRet.Errors[0].Message, SweetAlertMessageType.error);
+            return;
+        }
+        else
+        {
+            await js.DisplayMessage("Success", "Order Placed Successfully", SweetAlertMessageType.success);
+            Navigation.NavigateTo("OrderList");
+        }
+        StateHasChanged();
+    }
+}

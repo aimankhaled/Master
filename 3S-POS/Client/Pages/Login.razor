@@ -1,0 +1,32 @@
+﻿@page "/Login"
+@using POS.Client.Helper;
+@inject AuthConsumer authConsumer
+@inject TokenAuthenticationStateProvider jwt_provider
+@inject NavigationManager Navigation
+@inject IJSRuntime js
+
+
+<div class="card">
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Please wait while Authenticating..</p>
+    </div>
+</div>
+
+@code {
+    protected async override Task OnInitializedAsync()
+    {
+        var token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJFTiI6IjIwIiwiTmFtZSI6IkFZTUFOICBLSEFMRUQiLCJuYmYiOjE2OTgwODExNDksImV4cCI6MTY5OTk5NDM0OSwiaWF0IjoxNjk4MDg4MzQ5LCJpc3MiOiJBSyIsImF1ZCI6IlBPUyJ9.BIf1YIaaHWMhElx0-xfqQI4ojZ363NXYaiZ_YW1fCwM";
+        var user = await authConsumer.ValidateToken(token);
+
+        if (user.HasErrors || user.Data == null || string.IsNullOrEmpty(user.Data.EmpNum))
+        {
+            Navigation.NavigateTo("https://www.google.com");
+        }
+        else
+        {
+            await jwt_provider.SetTokenAsync(token);
+            Navigation.NavigateTo("", true);
+        }
+    }
+}

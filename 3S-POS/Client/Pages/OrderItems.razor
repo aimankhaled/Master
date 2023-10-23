@@ -1,0 +1,40 @@
+﻿<div class="order-container">
+    <div class="col-12 row">
+        <div class="col-6">
+            <label>Order Name :</label>
+            <label class="form-control text-center">@Order.OrderName</label>
+        </div>
+        <div class="col-6">
+            <label>Order Amount :</label>
+            <label class="form-control text-center">@Math.Round(Order.Amount,4)</label>
+        </div>
+    </div>
+    <br />
+    <div class="col-12 ">
+        <table class="table text-center">
+            <thead class="thead-dark">
+
+                <tr>
+                    <th>Name</th>
+                    <th>Count</th>
+                    <th>Price</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var i in Order.Items.DistinctBy(x => x.ItemName))
+                {
+                    <tr>
+                        <td>@i.ItemName</td>
+                        <td>@i.Count</td>
+                        <td>@Math.Round((i.Count * i.Price),4)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public OrderViewModel Order { get; set; }
+}
